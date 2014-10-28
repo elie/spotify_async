@@ -5,11 +5,12 @@ var express = require('express'),
     cookieParser = require('cookie-parser');
     request = require('request'),
     async = require('async'),
+    db = require("./models/index"),
     _ = require('underscore');
 
 var cookieSession = require('cookie-session');
 var passport = require('passport');
-var passportSpotify = require('passport-spotify');
+var SpotifyStrategy = require('passport-spotify').Strategy;
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
@@ -23,14 +24,37 @@ app.use(cookieSession( {
   })
 );
 
+passport.serializeUser(function(user, done) {
+    console.log("SERIALIZED JUST RAN")
+    done(null, user[0].dataValues.id);
+});
+
+passport.deserializeUser(function(id, done) {
+    console.log("DESERIALIZED JUST RAN")
+    db.User.find({
+        where:{
+            id:id
+        }
+    }).done(function(err,user){
+        done(err, user);
+    });
+
+});
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 passport.use(new SpotifyStrategy({
-    clientID: client_id,
-    clientSecret: client_secret,
-    callbackURL: "http://localhost:8888/auth/spotify/callback"
+    clientID: "c21860c692cb462c96ae07a0a53c5da8",
+    clientSecret: "73ff643188444025afbf3890e1f4dd24",
+    callbackURL: "http://localhost:3000/auth/spotify/callback"
   },
   function(accessToken, refreshToken, profile, done) {
-    User.findOrCreate({ spotifyId: profile.id }, function (err, user) {
-      return done(err, user);
+    db.User.findOrCreate({where:{
+        spotifyId: profile.id
+    }
+    }).done(function (err, user) {
+        return done(err,user);
     });
   }
 ));
@@ -40,15 +64,12 @@ passport.use(new SpotifyStrategy({
 app.get('/auth/spotify',
   passport.authenticate('spotify'),
   function(req, res){
-    // The request will be redirected to spotify for authentication, so this
-    // function will not be called.
   });
 
 app.get('/auth/spotify/callback',
   passport.authenticate('spotify', { failureRedirect: '/login' }),
   function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/');
+    res.redirect('/home');
   });
 
 
@@ -170,6 +191,11 @@ app.get('/home', function(req, res) {
         }
     );
     });
+
+app.get('/logout', function(req,res){
+    req.logout();
+    res.redirect('/');
+});
 
 
 var server = app.listen(3000, function() {
