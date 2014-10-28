@@ -1,6 +1,8 @@
 <% include partials/header %>
 <% include partials/nav %>
 
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
 <div class="subnav">
     <div class="container">
         <div class="row">
@@ -23,13 +25,15 @@
                     <p class="primary-color"><%= listOfEvents.length %> Events</p>
                 </div>
                 <% listOfEvents.forEach(function(event) { %>
+
                     <div id="eventItem">
                         <h5><%= event.performance[0].displayName %></h5>
                         <p><%= event.venue.displayName %></p>
-                            <iframe src="https://embed.spotify.com/?uri=spotify:trackset:PREFEREDTITLE:5Z7ygHQo02SUrFmcgpwsKW,1x6ACsKV4UdWS2FMuPFUiT,4bi73jCM02fMpkI11Lqmfe" frameborder="0" allowtransparency="true"></iframe>
+                            <iframe src="https://embed.spotify.com/?uri=<%=event.uri %>" frameborder="0" allowtransparency="true"></iframe>
+                            <!-- <iframe src="https://embed.spotify.com/?uri=spotify:trackset:PREFEREDTITLE:5Z7ygHQo02SUrFmcgpwsKW,1x6ACsKV4UdWS2FMuPFUiT,4bi73jCM02fMpkI11Lqmfe" frameborder="0" allowtransparency="true"></iframe> -->
                     </div>
+
                 <% }) %>
-<iframe src="https://embed.spotify.com/?uri=spotify:track:4th1RQAelzqgY7wL53UGQt" width="300" height="80" frameborder="0" allowtransparency="true"></iframe>
 
             </div>
 

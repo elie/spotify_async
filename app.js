@@ -1,3 +1,14 @@
+    // what is this async each thing? Good question!
+    // this takes in 3 parameters
+    // 1 - the array we are looping over
+    // 2 - a function with 2 parameters(name, callback)
+      // 1 - this is taco (name)
+      // 2 - this is what we run when we want to loop again (callback)
+    // 3 - another function with 1 parameter in case there are errors
+    // this 3rd function is not run until the looping is over
+      // that way, we can loop and not have to worry about other functions running
+      // before the loop is over
+
 var express = require('express'),
     app = express(),
     bodyParser = require('body-parser'),
@@ -45,8 +56,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 passport.use(new SpotifyStrategy({
-    clientID: "c21860c692cb462c96ae07a0a53c5da8",
-    clientSecret: "73ff643188444025afbf3890e1f4dd24",
+    clientID: process.env.SPOT_ID,
+    clientSecret: process.env.SPOT_SECRET,
     callbackURL: "http://localhost:3000/auth/spotify/callback"
   },
   function(accessToken, refreshToken, profile, done) {
@@ -87,6 +98,9 @@ app.get('/home', function(req, res) {
     var daysEvents = [];
     var artistNames = [];
     var artistIds = [];
+    var topTracks = [];
+    var track = {}
+    var finalTracks = [];
     var allEvents = "http://api.songkick.com/api/3.0/metro_areas/26330-us-sf-bay-area/calendar.json?apikey=z4nSxDMJEbSNuTKt";
 
     // what async waterfall does is let us chain functions together
@@ -118,32 +132,25 @@ app.get('/home', function(req, res) {
             // trying to get all artist name strings for days events
 
             daysEvents.forEach(function(event) {
+                // console.log("EVENT")
+                // console.log(event)
                 artistNames.push(event.performance[0].displayName);
             });
         }
             // this is the callback for async.waterfall (first parameter is if there is an error)
+            // console.log(daysEvents)
             callback(null,artistNames);
             });
 
         },
         function secondCall(artistNames, callback){
-          // what is this async each thing? Good question!
-          // this takes in 3 parameters
-            // 1 - the array we are looping over
-            // 2 - a function with 2 parameters(name, callback)
-              // 1 - this is taco (name)
-              // 2 - this is what we run when we want to loop again (callback)
-            // 3 - another function with 1 parameter in case there are errors
-            // this 3rd function is not run until the looping is over
-              // that way, we can loop and not have to worry about other functions running
-              // before the loop is over
+            console.log("second call just ran")
             async.each(artistNames, function(name,callback){
             var artistObject = "https://api.spotify.com/v1/search?q=" + name + "&type=artist";
                 request(artistObject, function(error, response, body) {
                     if (!error && response.statusCode == 200) {
                     var obj2 = JSON.parse(body);
                     artistIds.push(obj2.artists.items[0].id);
-                    // console.log("loop just ran", artistIds);
                     callback();
                     }
                 });
@@ -154,22 +161,27 @@ app.get('/home', function(req, res) {
             }
             else{
                 // this is the callback for async.waterfall (first parameter is if there is an error)
-                callback(null, artistIds);
+                callback(null, artistIds, artistNames);
             }
         });
     },
-        function thirdCall(artistIds, callback){
+    // we are still missing 5.....
+        function thirdCall(artistIds, artistNames, callback){
+            var count = 0
+            console.log("third call just ran")
             async.each(artistIds,function(id,callback){
               var artistTopTracks = "https://api.spotify.com/v1/artists/" + id + "/top-tracks?country=US";
                 request(artistTopTracks, function(error, response, body) {
                     if (!error && response.statusCode == 200) {
-                        var tracks = JSON.parse(body);
-                        console.log(tracks);
+                        var result = JSON.parse(body);
+                        for (var i = 0; i < daysEvents.length; i++) {
+                        if (daysEvents[i].performance[0].displayName === result.tracks[0].artists[0].name) {
+                            daysEvents[i].uri = result.tracks[0].uri
+                            count++
+                        }
 
-                    // Do whatever you want to the daysEvents array here
-                    // or whatever else you would like...
+                        }
 
-                        // this is the callback for async.each
                         callback();
                     }
                 });
@@ -179,14 +191,17 @@ app.get('/home', function(req, res) {
                 console.log("Oops! Something went wrong", err);
             }
             else{
+                // this is 18....it should be higher :(
+                console.log(count)
               // this is the callback for async.waterfall (first parameter is if there is an error)
-                callback(null, daysEvents);
+                callback(null, daysEvents, topTracks, artistNames);
             }
-            });
-
-        }],
+            })
+        },
+        ],
 
         function final(err, daysEvents){
+            console.log("final call just ran!")
           res.render("home", {listOfEvents: daysEvents});
         }
     );
